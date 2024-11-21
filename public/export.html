@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Data</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+    }
+    .export-container {
+      width: 80%;
+      max-width: 800px;
+      padding: 20px;
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      border-radius: 8px;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #007bff;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="export-container">
+    <h2>Export Data</h2>
+    <form id="exportForm">
+      <select id="dateRange">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+      <button type="submit">Fetch Data</button>
+    </form>
+    <div id="responseMessage" class="disclaimer"></div>
+    <table id="dataTable" style="display:none;">
+      <thead>
+        <tr>
+          <th>Phone Number</th>
+          <th>Verification Code</th>
+          <th>Created At</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="exportButton" style="display:none;">Export to Excel</button>
+  </div>
+
+  <script>
+    document.getElementById('exportForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const dateRange = document.getElementById('dateRange').value;
+
+      try {
+        const response = await fetch('/fetch-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dateRange: dateRange })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const tableBody = document.getElementById('dataTable').querySelector('tbody');
+          tableBody.innerHTML = '';
+
+          data.forEach(record => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${record.phoneNumber}</td>
+              <td>${record.verificationCode}</td>
+              <td>${new Date(record.createdAt).toLocaleString()}</td>
+            `;
+            tableBody.appendChild(row);
+          });
+
+          document.getElementById('dataTable').style.display = 'table';
+          document.getElementById('exportButton').style.display = 'block';
+        } else {
+          document.getElementById('responseMessage').innerText = 'Failed to fetch data. Please try again.';
+          document.getElementById('dataTable').style.display = 'none';
+          document.getElementById('exportButton').style.display = 'none';
+        }
+      } catch (error) {
+        document.getElementById('responseMessage').innerText = 'Error fetching data. Please try again.';
+        console.error('Error:', error);
+        document.getElementById('dataTable').style.display = 'none';
+        document.getElementById('exportButton').style.display = 'none';
+      }
+    });
+
+    document.getElementById('exportButton').addEventListener('click', async function () {
+      const dateRange = document.getElementById('dateRange').value;
+
+      try {
+        const response = await fetch('/export-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dateRange: dateRange })
+        });
+
+        const result = await response.blob();
+
+        const url = window.URL.createObjectURL(result);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'exported_data.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        document.getElementById('responseMessage').innerText = 'Error exporting data. Please try again.';
+        console.error('Error:', error);
+      }
+    });
+  </script>
+
+</body>
+</html>

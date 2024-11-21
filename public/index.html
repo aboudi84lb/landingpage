@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Landing Page Login with Phone Number</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+    }
+    .login-container {
+      width: 300px;
+      padding: 20px;
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      border-radius: 8px;
+    }
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    input[type="tel"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .disclaimer {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Enter your phone number" required pattern="[0-9]{12}">
+      <button type="submit">Login</button>
+    </form>
+    <div id="responseMessage" class="disclaimer">We'll send a verification code to your phone.</div>
+
+    <form id="verificationForm" style="display:none;">
+      <input type="text" id="verificationCode" name="verificationCode" placeholder="Enter verification code" required>
+      <button type="submit">Verify</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+
+      if (!/^\d{12}$/.test(phoneNumber)) {
+        document.getElementById('responseMessage').innerText = 'Please enter a valid 12-digit phone number.';
+        return;
+      }
+
+      const requestData = { phoneNumber: phoneNumber };
+
+      try {
+        const response = await fetch('/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          document.getElementById('responseMessage').innerText = result.message;
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('verificationForm').style.display = 'block';
+          // Store phone number in sessionStorage for verification step
+          sessionStorage.setItem('phoneNumber', phoneNumber);
+        } else {
+          document.getElementById('responseMessage').innerText = result.error;
+        }
+      } catch (error) {
+        document.getElementById('responseMessage').innerText = 'Error sending verification code. Please try again.';
+        console.error('Error:', error);
+      }
+    });
+
+    document.getElementById('verificationForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const verificationCode = document.getElementById('verificationCode').value.trim();
+      const phoneNumber = sessionStorage.getItem('phoneNumber'); // Retrieve phone number from sessionStorage
+
+      const requestData = { phoneNumber: phoneNumber, verificationCode: verificationCode };
+
+      try {
+        const response = await fetch('/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestData)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          window.location.href = result.redirectTo;  // Redirect to welcome page
+        } else {
+          document.getElementById('responseMessage').innerText = result.error;
+        }
+      } catch (error) {
+        document.getElementById('responseMessage').innerText = 'Error verifying code. Please try again.';
+        console.error('Error:', error);
+      }
+    });
+  </script>
+
+</body>
+</html>
